@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Institution {
+  id           String      @id @default(uuid())
+  name         String
+  contactEmail String
+  phoneNumber  String
+  createdAt    DateTime    @default(now())
+  user       User?
+  dormitories  Dormitory[]
+  classrooms   Classroom[]
+}
+
+model User {
+  id            String      @id @default(uuid())
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  institutionId String      @unique
+  passwordHash  String
+  fullName      String
+  email         String      @unique
+  createdAt     DateTime    @default(now())
+  isActive      Boolean     @default(true)
+
+  student    Student[]
+  lecturer   Lecturer[]
+  dean       Dean[]
+  accessLogs AccessLog[]
+}
+
+model Student {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id])
+  matricNo    String    @unique
+  email        String   @unique
+  passwordHash String
+  department  String
+  level       String
+  dormitoryId String
+  dormitory   Dormitory @relation(fields: [dormitoryId], references: [id])
+
+  rfidTags     RfidTag?
+  fingerprints Fingerprint?
+  keypadPins   KeypadPin?
+  attendance   AttendanceRecord[]
+}
+
+model Lecturer {
+  id         String @id @default(uuid())
+  userId     String @unique
+  user       User   @relation(fields: [userId], references: [id])
+  staffNo    String @unique
+  email        String   @unique
+  passwordHash String
+  department String
+}
+
+model Dean {
+  id      String @id @default(uuid())
+  userId  String @unique
+  user    User   @relation(fields: [userId], references: [id])
+  staffNo String @unique
+  email        String   @unique
+  passwordHash String
+}
+
+model Dormitory {
+  id            String      @id @default(uuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  name          String
+  location      String
+  students      Student[]
+}
+
+model Classroom {
+  id            String      @id @default(uuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  name          String
+  location      String
+}
+
+model Fingerprint {
+  id           String   @id @default(uuid())
+  studentId    String   @unique
+  student      Student  @relation(fields: [studentId], references: [id])
+  templateData String
+  enrolledAt   DateTime @default(now())
+  isActive     Boolean  @default(true)
+}
+
+model KeypadPin {
+  id        String   @id @default(uuid())
+  studentId String   @unique
+  student   Student  @relation(fields: [studentId], references: [id])
+  pinHash   String
+  setAt     DateTime @default(now())
+  isActive  Boolean  @default(true)
+}
+
+model RfidTag {
+  id        String   @id @default(uuid())
+  studentId String   @unique
+  student   Student  @relation(fields: [studentId], references: [id])
+  tagUid    String   @unique
+  issuedAt  DateTime @default(now())
+  isActive  Boolean  @default(true)
+}
+
+model AttendanceRecord {
+  id           String    @id @default(uuid())
+  studentId    String
+  student      Student   @relation(fields: [studentId], references: [id])
+  locationId   String
+  locationType String // e.g., 'classroom', 'dormitory'
+  accessLogId  String
+  accessLog    AccessLog @relation(fields: [accessLogId], references: [id])
+  attendedAt   DateTime  @default(now())
+}
+
+model AccessLog {
+  id                String             @id @default(uuid())
+  userId            String
+  user              User               @relation(fields: [userId], references: [id])
+  accessType        String // e.g., 'entry', 'exit'
+  accessMethod      String // e.g., 'rfid', 'fingerprint', 'pin'
+  accessResult      String // e.g., 'success', 'failed'
+  timestamp         DateTime           @default(now())
+  attendanceRecords AttendanceRecord[]
+}
+
+model DeviceState {
+  id         String   @id @default(uuid())
+  mode       String   // "idle" | "register"
+  studentId  String?  // Used only in "register" mode
+  updatedAt  DateTime @updatedAt
+}
+
+enum Role {
+  admin
+  student
+  lecturer
+  dean
+}
